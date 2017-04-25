@@ -25,8 +25,9 @@ def display_fields(fields):
 #base_item - Integer to specify where to start returning values from
 #            use with max_items to return data in chunks
 #sort - String specifying which database field to sort the results on
+#All are optional, but searches will not be performed if nothing is given to search on
 print('********************************************')
-print('Test 1 : Search by label')
+print('Test 1 : Search by label, find curve 2.0.103.1')
 print('********************************************')
 
 fields = number_fields.search(label='2.0.103.1')
