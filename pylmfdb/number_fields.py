@@ -52,6 +52,15 @@ def _get_fields_from_api_page(base_url, requests, **kwargs):
   except:
     pass
 
+  try:
+    single_field = kwargs['single_field']
+    #This is a bit of a hack. Set the 'max_items' keyword to 2, so that you can detect
+    #if the database returns more than one item, but so that you don't drag out too much
+    #unnecessary data
+    kwargs['max_items'] = 2
+  except:
+    single_field = False
+
   fields = []
   count = 0
   max_count = None
@@ -77,6 +86,12 @@ def _get_fields_from_api_page(base_url, requests, **kwargs):
         break
     full_url = url_base + result['next']
 
+  if len(fields) == 0:
+    raise RuntimeError
+  if single_field:
+    if len(fields) != 1:
+      print('Warning! Code is returning a single field, but database returned more than one')
+    return fields[0]
   if max_count is not None:
     return fields[ : min(len(fields),max_count)]
   return fields
@@ -85,6 +100,9 @@ def search( ** kwargs):
   searches=[]
   try:
     searches.append("label="+kwargs['label'])
+    #Searches by label return a single value only, so change the
+    #return type to be a single value
+    kwargs['single_field'] = True
     del kwargs['label']
   except:
     pass

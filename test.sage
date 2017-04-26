@@ -3,19 +3,27 @@ import sys
 
 def display_fields(fields):
 
-  for index,el in enumerate(fields):
-    print('Element {0} has label {1}'.format(index+1,el.label))
-    u = el.get_polynomial_ring(name='a')
-    print('Element {0} has defining polynomial {1}'.format(index+1,u))
-    u.<a> = el.get_number_field()
-    if el.regulator is None:
-      u.<a> = el.get_number_field()
-      reg = u.regulator()
-      print('Element {0} has calculated regulator {1}'.format(index+1,reg))
-    else:
-      reg = el.regulator
-      print('Element {0} has stored regulator {1}'.format(index+1,reg))
+  try:
+    for index,el in enumerate(fields):
+      display_single_field(index,el)
+  except:
+    try:
+      display_single_field(0, fields)
+    except:
+      print('Invalid field object selected for display')
 
+def display_single_field(index,el):
+  print('Element {0} has label {1}'.format(index+1,el.label))
+  u = el.get_polynomial_ring(name='a')
+  print('Element {0} has defining polynomial {1}'.format(index+1,u))
+  u.<a> = el.get_number_field()
+  if el.regulator is None:
+    u.<a> = el.get_number_field()
+    reg = u.regulator()
+    print('Element {0} has calculated regulator {1}'.format(index+1,reg))
+  else:
+    reg = el.regulator
+    print('Element {0} has stored regulator {1}'.format(index+1,reg))
 
 #Options to search currently are
 #degree - Integer to search by degree
@@ -24,10 +32,14 @@ def display_fields(fields):
 #max_items - Integer to specify the maximum number of elements to return
 #base_item - Integer to specify where to start returning values from
 #            use with max_items to return data in chunks
+#single_field - Cause the code to return only a single field object
+#               not a list. Set automatically for searches that should
+#               return a single item. Code prints a warning if more than one
+#               item is returned from the database
 #sort - String specifying which database field to sort the results on
 #All are optional, but searches will not be performed if nothing is given to search on
 print('********************************************')
-print('Test 1 : Search by label, find curve 2.0.103.1')
+print('Test 1 : Search by label, find field 2.0.103.1')
 print('********************************************')
 
 fields = number_fields.search(label='2.0.103.1')
