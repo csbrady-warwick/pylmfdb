@@ -1,3 +1,9 @@
+api_type_searchers = 'API_SEARCHERS'
+api_type_descriptions = 'API_DESCRIPTIONS'
+api_type_inventory = 'API_INVENTORY'
+api_type_records = 'API_RECORDS'
+api_type_error = 'API_ERROR'
+
 def api_string(value):
   return "s" + str(value)
 
