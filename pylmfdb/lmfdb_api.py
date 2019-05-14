@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import object
 try:
   from six.moves.urllib.request import urlopen
 except:
@@ -24,8 +25,49 @@ def get_and_decode(url):
         dat = str(page.read().decode('utf-8'))
         return json.loads(dat)
     except Exception as e:
-        print(e)
         return None
+
+def build_object(name, keys, docs, obj_prototype):
+    attrs = {'__doc__':docs}
+    try:
+        for el in keys:
+          attrs[el] = keys[el]
+    except:
+        pass
+    return type(name, (obj_prototype,), attrs)
+
+class lmfdb_search(object):
+    def __init__(self, api_searcher, query, docs, obj_prototype = object):
+        self.api_searcher = api_searcher
+        self.query = query
+        self.docs = docs
+        self.start = 0
+        self.obj_prototype = obj_prototype
+        self._load()
+
+    def _load(self):
+        self.result = self.api_searcher._search_inner(self.query['searcher'], self.query['field_names'], self.start)
+        self.start = self.result['view_next']
+        self._retindex = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            val = build_object('LMFDB_search_result', self.result['records'][self._retindex], self.docs, self.obj_prototype)
+        except IndexError:
+            if (self.result['view_next'] < 0): raise StopIteration
+            self._load()
+            val = build_object('LMFDB_search_result', self.result['records'][self._retindex], self.docs, self.obj_prototype)
+        self._retindex = self._retindex + 1
+        return val
+
+    def __getitem__(self, index):
+        if (self.result):
+            return build_object('LMFDB_search_result', self.result['records'][index], self.docs, self.obj_prototype)
+        else:
+            raise IndexError
 
 class lmfdb_api_searcher:
     def __init__(self, base_url = None):
@@ -33,6 +75,9 @@ class lmfdb_api_searcher:
             self.base_url = base_url
         else:
             self.base_url = 'http://localhost:37777'
+
+        self.search = None
+        self.start = 0
 
     def _get_searchers(self):
         full_url = self.base_url + "/api2/description/searchers"
@@ -62,10 +107,20 @@ class lmfdb_api_searcher:
         result = get_and_decode(full_url)
         if not result: return None
 
-        if (result['type'] == api_type_descriptions):
+        if (result['type'] == api_type_inventory):
             return result['data']
         else:
             return None
+
+    def _get_doc_strings(self, searcher):
+        data = self._get_data_fields(searcher)
+        str=""
+        for el in data:
+            try:
+                str+=el + ' - ' + data[el]['description'] + '\n'
+            except:
+                str+= el + ' - '  + 'No data in inventory, please update\n'
+        return str
 
     def _get_field_names(self, search_fields, cnames):
         ret = {}
@@ -75,8 +130,12 @@ class lmfdb_api_searcher:
                     ret[el] = el2
                     break
         return ret
+
+    def _search(self, searcher, field_names = None, start = None, obj_prototype = object):
+        query = {'searcher':searcher,'field_names':field_names}
+        return lmfdb_search(self, query, self._get_doc_strings(searcher), obj_prototype)
  
-    def _search(self, searcher, field_names = None, start = None):
+    def _search_inner(self, searcher, field_names = None, start = None):
         full_url = self.base_url + "/api2/data/"+searcher
         query = []
         if field_names:
@@ -96,81 +155,3 @@ class lmfdb_api_searcher:
             return result['data']
         else:
             return None
-
-    def interactive_search(self):
-        val = self._get_searchers()
-        if not val:
-            print('Unable to get the list of searchers. Check that you can connect to ', self.base_url)
-            return
-        while(True):
-            print('LMFDB has returned the following searchers to select from:')
-            print('0) : Cancel search')
-            for indx, el in enumerate(val):
-                print(str(indx+1) + ") : " + str(val[el]['human_name']))
-            print('Select the searcher to use by number')
-            data=raw_input('Type d{number} to get the description :')
-            if data.startswith('d'):
-                try:
-                    index = int(data[1:])
-                    if index >= 1 or index <= len(val):
-                        print('')
-                        print('Description for ' + list(val.values())[index-1]['human_name'])
-                        try:
-                            print(val[el]['desc'])
-                        except: pass
-                        print('')
-                        raw_input('Press a key to continue')
-                    else:
-                       print('Invalid description')
-                except Exception as e: print(e)
-            else:
-                try:
-                    index = int(data)
-                    if (index >= 0 and index <= len(val)):
-                        break 
-                except: pass
-
-        if (index == 0):
-            print("Cancelling search")
-            return None
-        searcher = list(val.keys())[index-1]
-        print('Using searcher : '+list(val.values())[index-1]['human_name'])
-        fields = self._get_search_fields(searcher)
-        if (not fields):
-            print('Unable to get fields for searcher. This is a backend problem')
-            return None
-        else:
-            while(True):
-                print('LMFDB has returned the following fields that can be searched in:')
-                print('0) : Cancel search')
-                for indx, el in enumerate(fields):
-                    print(str(indx+1) + ") : " + str(el))
-                print('Select the field to search in by number')
-                data=raw_input('Type d{number} to get the description :')
-                if data.startswith('d'):
-                    try:
-                        index = int(data[1:])
-                        if index >= 1 or index <= len(fields):
-                            print('')
-                            print('Description for ' + list(fields.keys())[index-1])
-                            try:
-                                print(list(fields.values())['description'])
-                            except: pass
-                            print('')
-                            raw_input('Press a key to continue')
-                        else:
-                            print('Invalid description')
-                    except: pass
-                else:
-                    try:
-                        index = int(data)
-                        if (index >= 0 and index <= len(fields)):
-                            break
-                    except: pass
-
-            if (index == 0):
-                print("Cancelling search")
-                return None
-
-        sval = raw_input('Please enter the value to search for :')
-        return self._search(searcher, {list(fields.keys())[index-1] : sval})

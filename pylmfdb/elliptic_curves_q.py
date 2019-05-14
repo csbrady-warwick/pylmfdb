@@ -1,5 +1,5 @@
 from lmfdb_api import lmfdb_api_searcher
-from sage.schemes.elliptic_curves.constructor import EllipticCurve
+#from sage.schemes.elliptic_curves.constructor import EllipticCurve
 class lmfdb_elliptic_curves_q:
 
     def __init__(self, url = None):
@@ -35,11 +35,8 @@ class lmfdb_elliptic_curves_q:
             else:
                 search_dict[self._cnamed_fields[el]] = kwargs[el]
         start_pos = 0
-        vals = {'view_next':0}
-        result = []
-        while vals['view_next'] >=0:
-            vals = self._searcher._search(self._searcher_name, search_dict, start = start_pos)
-            for el in vals['records']:
-                result.append(EllipticCurve(el['ainvs']))
-            start_pos = vals['view_next']
+        result = self._searcher._search(self._searcher_name, search_dict)
+        res = []
+        for el in result:
+          res.append(el['label'])
         return result
