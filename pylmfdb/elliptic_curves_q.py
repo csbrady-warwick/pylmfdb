@@ -6,7 +6,7 @@ class lmfdb_elliptic_curves_q:
         self._searcher_name = 'elliptic_curves_q' #Hard coded searcher name
         self._searcher = lmfdb_api_searcher(url)
         searchers = self._searcher._get_searchers()
-        if not self._searcher_name in searchers.keys(): raise KeyError('Missing API key')
+        if not self._searcher_name in [_.keys()[0] for _ in searchers]: raise KeyError('Missing API key')
         search_fields = self._searcher._get_search_fields(self._searcher_name)
         self._cnamed_fields = {}
         self._other_fields = []
@@ -33,10 +33,6 @@ class lmfdb_elliptic_curves_q:
                     print('"' + el + '" is a non canonical search name.')
                     search_dict[el] = kwargs[el]
             else:
-                search_dict[self._cnamed_fields[el]] = kwargs[el]
-        start_pos = 0
+                search_dict[el] = kwargs[el]
         result = self._searcher._search(self._searcher_name, search_dict)
-        res = []
-        for el in result:
-          res.append(el['label'])
         return result

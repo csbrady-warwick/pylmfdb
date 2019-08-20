@@ -1,5 +1,6 @@
 from __future__ import print_function
 from builtins import object
+import types
 try:
   from six.moves.urllib.request import urlopen
 except:
@@ -8,10 +9,6 @@ try:
   import json
 except:
   raise ImportError('Unable to import json parser')
-
-#Patch raw_input in Python3
-try: raw_input = input
-except NameError: pass
 
 api_type_searchers = 'API_SEARCHERS'
 api_type_descriptions = 'API_DESCRIPTIONS'
@@ -27,17 +24,26 @@ def get_and_decode(url):
     except Exception as e:
         return None
 
+class meta_base(object):
+    def __getitem__(self, value):
+        return vars(self)[value]
+
+    def __str__(self):
+        return str(vars(self))
+
 def build_object(name, keys, docs, obj_prototype):
     attrs = {'__doc__':docs}
+    proto = type(name, (obj_prototype,), attrs)
+    val = proto()
     try:
         for el in keys:
-          attrs[el] = keys[el]
+            setattr(val, el, keys[el])
     except:
         pass
-    return type(name, (obj_prototype,), attrs)
+    return val
 
 class lmfdb_search(object):
-    def __init__(self, api_searcher, query, docs, obj_prototype = object):
+    def __init__(self, api_searcher, query, docs, obj_prototype = meta_base):
         self.api_searcher = api_searcher
         self.query = query
         self.docs = docs
@@ -62,6 +68,9 @@ class lmfdb_search(object):
             val = build_object('LMFDB_search_result', self.result['records'][self._retindex], self.docs, self.obj_prototype)
         self._retindex = self._retindex + 1
         return val
+
+    def __len__(self):
+        return len(self.result['records'])
 
     def __getitem__(self, index):
         if (self.result):
@@ -131,7 +140,7 @@ class lmfdb_api_searcher:
                     break
         return ret
 
-    def _search(self, searcher, field_names = None, start = None, obj_prototype = object):
+    def _search(self, searcher, field_names = None, start = None, obj_prototype = meta_base):
         query = {'searcher':searcher,'field_names':field_names}
         return lmfdb_search(self, query, self._get_doc_strings(searcher), obj_prototype)
  
@@ -140,7 +149,7 @@ class lmfdb_api_searcher:
         query = []
         if field_names:
             for el in field_names:
-                query.append(el+"="+field_names[el])
+                query.append(el+"="+str(field_names[el]))
 
         if start:
             query.append("_view_start="+str(start))
